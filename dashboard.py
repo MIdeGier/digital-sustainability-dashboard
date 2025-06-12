@@ -239,7 +239,7 @@ box_colors = {
 def load_data():
     """Load and validate the data files"""
     try:
-        survey_data = pd.read_csv('Survey_data.csv')
+        survey_data = pd.read_csv('Survey_data.csv', sep=';', encoding='latin-1')
         qa_weights = pd.read_csv('DST_Excel_QAweights.csv')
         
         # Clean survey data - remove empty rows
@@ -1723,7 +1723,7 @@ def show_recommendations(results: Dict):
     try:
         qa_weights = pd.read_csv('QA_weights.csv')
         tech2esrs = pd.read_csv('DST_Excel_Tech2ESRS.csv')
-        survey_data = pd.read_csv('Survey_data.csv')
+        survey_data = pd.read_csv('Survey_data.csv', sep=';', encoding='latin-1')
     except Exception as e:
         st.error(f"Error loading data files: {str(e)}")
         return
