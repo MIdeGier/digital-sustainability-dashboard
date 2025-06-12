@@ -228,18 +228,11 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Define global color schemes for ESG categories
-box_colors = {
-    'Environmental': 'rgba(111, 166, 56, 0.6)',    # #6FA638 with 0.6 opacity
-    'Social': 'rgba(92, 169, 148, 0.6)',          # #5CA994 with 0.6 opacity
-    'Governance': 'rgba(168, 228, 231, 0.6)'      # #A8E4E7 with 0.6 opacity
-}
-
 @st.cache_data
 def load_data():
     """Load and validate the data files"""
     try:
-        survey_data = pd.read_csv('Survey_data.csv', sep=';', encoding='latin-1')
+        survey_data = pd.read_csv('Survey_data.csv')
         qa_weights = pd.read_csv('DST_Excel_QAweights.csv')
         
         # Clean survey data - remove empty rows
@@ -765,28 +758,12 @@ def create_radar_chart(results: Dict, level: str = 'overview') -> go.Figure:
             'Governance': (210, 330)       # Right section
         }
 
-        # Colors based on dimension
-        if level.lower() == 'people':
-            # Different shades of green
-            box_colors = {
-                'Environmental': 'rgba(111, 166, 56, 0.6)',    # #6FA638 with 0.6 opacity (matching overview)
-                'Social': 'rgba(136, 208, 124, 0.6)',         # #88D07C with 0.6 opacity
-                'Governance': 'rgba(217, 242, 208, 0.6)'       # #D9F2D0 with 0.6 opacity
-            }
-        elif level.lower() == 'process':
-            # Different shades of green
-            box_colors = {
-                'Environmental': 'rgba(96, 177, 158, 0.6)',    # #60B19E with 0.6 opacity
-                'Social': 'rgba(132, 207, 191, 0.6)',         # #84CFBF with 0.6 opacity
-                'Governance': 'rgba(156, 225, 212, 0.6)'      # #9CE1D4 with 0.6 opacity
-            }
-        else:  # policy
-            # Different shades of blue
-            box_colors = {
-                'Environmental': 'rgba(117, 196, 201, 0.6)',   # #75C4C9 with 0.6 opacity
-                'Social': 'rgba(168, 228, 231, 0.6)',         # #A8E4E7 with 0.6 opacity
-                'Governance': 'rgba(210, 248, 242, 0.6)'      # #D2F8F2 with 0.6 opacity
-            }
+        # Default box_colors to prevent 'not defined' errors
+        box_colors = {
+            'Environmental': 'rgba(200, 200, 200, 0.6)',
+            'Social': 'rgba(200, 200, 200, 0.6)',
+            'Governance': 'rgba(200, 200, 200, 0.6)'
+        }
 
         # Add section dividing lines with arrows
         division_angles = [
@@ -1025,44 +1002,32 @@ def extract_process_maturity(survey_response: pd.Series, qa_weights: pd.DataFram
     return maturity_levels
 
 def get_technology_recommendations(maturity_levels: Dict[str, int], tech2esrs_df: pd.DataFrame) -> List[Dict]:
-    """Get technology recommendations based on current maturity levels.
-    
-    Args:
-        maturity_levels: Dictionary mapping ESRS impacts to their current maturity levels
-        tech2esrs_df: DataFrame mapping technologies to ESRS impacts and maturity levels
-        
-    Returns:
-        List of dictionaries containing recommendation information
-    """
+    """Generate technology recommendations based on maturity levels"""
     recommendations = []
     
-    # For each ESRS impact and its current maturity level
+    # Load complexity data
+    try:
+        complexity_df = pd.read_csv('DST_Excel_Complexity.csv', index_col=0)
+    except Exception as e:
+        st.error(f"Error loading complexity data: {str(e)}")
+        return recommendations
+    
     for esrs_impact, current_level in maturity_levels.items():
-        # Skip if already at max level (5)
+        # Skip if already at max level
         if current_level >= 5:
             continue
             
         next_level = current_level + 1
+        level_col = next_level  # Column names are numbers in the CSV
         
-        # Find all technologies that can help with this ESRS impact
+        # Find matching technologies
         matching_techs = tech2esrs_df[
-            tech2esrs_df.iloc[:, 0].str.strip().str.lower() == esrs_impact.lower()
+            tech2esrs_df['ESRS number'].str.lower() == esrs_impact.lower()
         ]
-        
-        # Get the column index for the next level (columns are: ESRS impact, Tech name, Level 1-5)
-        # So Level 1 is at index 2, Level 2 at index 3, etc.
-        level_col = next_level + 1  # Add 2 to get the correct column index
-        
-        # Load complexity data
-        try:
-            complexity_df = pd.read_csv('DST_Excel_Complexity.csv', index_col=0)
-        except Exception as e:
-            print(f"Error loading complexity data: {str(e)}")
-            complexity_df = pd.DataFrame()
         
         for _, tech_row in matching_techs.iterrows():
             tech_name = tech_row.iloc[1]  # Technology name is in second column
-            tech_desc = tech_row.iloc[level_col]  # Now using the next level's description via column index
+            tech_desc = tech_row[level_col]
             
             if pd.notna(tech_desc) and str(tech_desc).strip():
                 # Get complexity for this technology at this maturity level
@@ -1598,7 +1563,11 @@ def show_detailed_analysis(results: Dict):
         "Select dimension to see the ESG scores in more detail:",
         ["People", "Process", "Policy"]
     )
-    
+    box_colors = {
+        'Environmental': 'rgba(200, 200, 200, 0.6)',
+        'Social': 'rgba(200, 200, 200, 0.6)',
+        'Governance': 'rgba(200, 200, 200, 0.6)'
+    }
     # Define colors based on selected dimension
     if dimension.lower() == 'people':
         # Different shades of green
@@ -1669,7 +1638,12 @@ def show_detailed_analysis(results: Dict):
 def show_recommendations(results: Dict):
     """Show recommendations based on maturity assessment"""
     st.subheader("Which digital manufacturing technologies can support your ESG goals?")
-    
+    box_colors = {
+        'Environmental': 'rgba(200, 200, 200, 0.6)',
+        'Social': 'rgba(200, 200, 200, 0.6)',
+        'Governance': 'rgba(200, 200, 200, 0.6)'
+    }
+
     # Add CSS for styling the expanders with category-specific colors
     st.markdown("""
         <style>
@@ -1723,7 +1697,7 @@ def show_recommendations(results: Dict):
     try:
         qa_weights = pd.read_csv('QA_weights.csv')
         tech2esrs = pd.read_csv('DST_Excel_Tech2ESRS.csv')
-        survey_data = pd.read_csv('Survey_data.csv', sep=';', encoding='latin-1')
+        survey_data = pd.read_csv('Survey_data.csv')
     except Exception as e:
         st.error(f"Error loading data files: {str(e)}")
         return
