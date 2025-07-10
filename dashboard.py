@@ -488,7 +488,7 @@ def map_response_to_maturity(response_text: str) -> int:
     
     return 1  # Default to level 1 if no clear indicators
 
-def create_radar_chart(results: Dict, level: str = 'overview') -> go.Figure:
+def create_radar_chart(results: Dict, level: str = 'overview', box_colors: Dict = None) -> go.Figure:
     """Create radar chart visualization"""
     if level == 'overview':
         # Calculate overall scores for each dimension
@@ -758,12 +758,13 @@ def create_radar_chart(results: Dict, level: str = 'overview') -> go.Figure:
             'Governance': (210, 330)       # Right section
         }
 
-        # Default box_colors to prevent 'not defined' errors
-        box_colors = {
-            'Environmental': 'rgba(200, 200, 200, 0.6)',
-            'Social': 'rgba(200, 200, 200, 0.6)',
-            'Governance': 'rgba(200, 200, 200, 0.6)'
-        }
+        # Use passed box_colors or default to grey if not provided
+        if box_colors is None:
+            box_colors = {
+                'Environmental': 'rgba(200, 200, 200, 0.6)',
+                'Social': 'rgba(200, 200, 200, 0.6)',
+                'Governance': 'rgba(200, 200, 200, 0.6)'
+            }
 
         # Add section dividing lines with arrows
         division_angles = [
@@ -1013,12 +1014,12 @@ def get_technology_recommendations(maturity_levels: Dict[str, int], tech2esrs_df
         return recommendations
     
     for esrs_impact, current_level in maturity_levels.items():
-        # Skip if already at max level
+        # For recommendations, we want to show the next level up to level 5
+        # If already at max level, still show the max level description
         if current_level >= 5:
-            continue
-            
-        next_level = current_level + 1
-        level_col = next_level  # Column names are numbers in the CSV
+            next_level = 5  # Show the highest level description
+        else:
+            next_level = current_level + 1
         
         # Find matching technologies
         matching_techs = tech2esrs_df[
@@ -1027,7 +1028,9 @@ def get_technology_recommendations(maturity_levels: Dict[str, int], tech2esrs_df
         
         for _, tech_row in matching_techs.iterrows():
             tech_name = tech_row.iloc[1]  # Technology name is in second column
-            tech_desc = tech_row[level_col]
+            # Get the description for the recommended level (next_level)
+            # Columns 2-6 correspond to levels 1-5, so we need to add 1 to get the correct column index
+            tech_desc = tech_row.iloc[next_level + 1]  # +1 because level 1 is at index 2, level 2 at index 3, etc.
             
             if pd.notna(tech_desc) and str(tech_desc).strip():
                 # Get complexity for this technology at this maturity level
@@ -1594,7 +1597,7 @@ def show_detailed_analysis(results: Dict):
     col1, col2 = st.columns([2, 1])
     
     with col1:
-        fig = create_radar_chart(results, dimension)
+        fig = create_radar_chart(results, dimension, box_colors)
         st.plotly_chart(fig, use_container_width=True)
     
     with col2:
@@ -1639,9 +1642,9 @@ def show_recommendations(results: Dict):
     """Show recommendations based on maturity assessment"""
     st.subheader("Which digital manufacturing technologies can support your ESG goals?")
     box_colors = {
-        'Environmental': 'rgba(200, 200, 200, 0.6)',
-        'Social': 'rgba(200, 200, 200, 0.6)',
-        'Governance': 'rgba(200, 200, 200, 0.6)'
+        'Environmental': 'rgba(111, 166, 56, 0.6)',   # #6FA638 with 0.6 opacity (matching overview People)
+        'Social': 'rgba(92, 169, 148, 0.6)',         # #5CA994 with 0.6 opacity (matching overview Process)
+        'Governance': 'rgba(168, 228, 231, 0.6)'     # #A8E4E7 with 0.6 opacity (matching overview Policy)
     }
 
     # Add CSS for styling the expanders with category-specific colors
